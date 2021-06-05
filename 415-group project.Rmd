@@ -1,0 +1,49 @@
+---
+title: "415-group project"
+author: "Yuan Shi"
+date: "4/4/2018"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+interview <- read.csv ("/Users/apple/Desktop/interview_clean_v3.csv", header=TRUE)
+interview <- na.omit(interview)
+interview$Observed.Attendance <- with(ifelse(Observed.Attendance == "yes", "1", "0"), data=interview)
+set.seed(6942)
+interview = interview[,-1]
+train_id = sample(1:nrow(interview), trunc(0.8*nrow(interview)))#Rita's
+#train_id = sample(1:nrow(interview), size = floor(0.8 * nrow(interview)))
+interview_train = interview[train_id, ]
+interview_test = interview[-train_id, ]
+summary(interview)
+summary(interview_train$Candidate.Native.location)
+```
+## Apply Logistic distribution to data
+```{r}
+interview$Candidate.Native.location <- as.factor(interview$Candidate.Native.location)
+mod1 <- glm(Expected.Attendance ~ .,
+            data = interview_train, family = binomial)
+## training data
+pred <- predict(mod1, interview_train)
+expit <- function(x) exp(x) / (1 + exp(x))
+predProbs <- expit(pred)
+trainPrediction <- rep(0, nrow(interview_train))
+trainPrediction[predProbs > .5] <- 1
+table(trainPrediction, interview_train$Observed.Attendance, dnn = c("Predicted", "Actual"))
+#training error
+mean(trainPrediction != interview_train$Observed.Attendance)
+
+#test data
+pred <- predict(mod1, interview_test)
+expit <- function(x) exp(x) / (1 + exp(x))
+predProbs <- expit(pred)
+testPrediction <- rep(0, nrow(interview_test))
+testPrediction[predProbs > .5] <- 1
+table(testPrediction, interview_test$Observed.Attendance, dnn = c("Predicted", "Actual"))
+#training error
+mean(testPrediction != interview_test$Observed.Attendance)
+```

@@ -1,0 +1,108 @@
+---
+title: "415project_lasso&ridge"
+author: "Ruifan Liu"
+date: "April 1, 2018"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+install.packages("grplasso")
+library(glmnet)
+library(grplasso)
+data <- read.csv("C:/Users/ruifa/Dropbox/Stats 415/415project/interview_clean_v3.csv")
+data <- na.omit(data)
+names(data)[10:16] = c('Q1', 'Q2', 'Q3', 'Q4', 'Q5', 'Q6', 'Q7')
+data <- data[,-1]
+data$Observed.Attendance <- ifelse(data$Observed.Attendance == "yes", 1, 0)
+
+x = model.matrix(Observed.Attendance~., data)[, -1]
+y = data$Observed.Attendance
+
+#split train and test data
+set.seed(6942)
+train_id = sample(1:nrow(data), trunc(0.8*nrow(data)))
+```
+
+```{r}
+#ridge
+ridge.best = cv.glmnet(x[train_id,], y[train_id], alpha = 0)
+bestlam = ridge.best$lambda.min
+
+#train predict
+ridge.pred_train = predict(ridge.best, s = bestlam, newx = x[train_id,])
+y.pred_train = c()
+y.pred_train = ifelse(ridge.pred_train > 0.5, 1, 0)
+
+#train accuracy = 0.7662
+sum(y.pred_train == y[train_id]) / length(train_id)
+```
+```{r}
+#test predict
+set.seed(6942)
+ridge.pred_test = predict(ridge.best, s = bestlam, newx = x[-train_id,])
+y.pred_test = c()
+y.pred_test = ifelse(ridge.pred_test > 0.5, 1, 0)
+
+#test accuracy = 0.67
+sum(y.pred_test == y[-train_id]) / (nrow(data) - length(train_id))
+```
+
+```{r}
+set.seed(6942)
+#grouped lasso
+grid = 10^seq(10, -2, length = 100)
+lasso.mod = glmnet(x[train_id,], y[train_id], alpha = 1, lambda = grid, family = "binomial",type.multinomial = "grouped")
+
+#cross-validation choose lambda
+lasso.best = cv.glmnet(x[train_id,], y[train_id], alpha = 1, type.measure = "auc")
+bestlam2 = lasso.best$lambda.min
+
+#train predict
+lasso.pred_train = predict(lasso.mod, s = bestlam2, newx = x[train_id,])
+y.pred_train2 = c()
+y.pred_train2 = ifelse(lasso.pred_train > 0.5, 1, 0)
+
+#train accuracy = 0.7623888
+sum(y.pred_train2 == y[train_id]) / length(train_id)
+```
+
+```{r}
+#test predict
+set.seed(6942)
+lasso.pred_test = predict(lasso.mod, s = bestlam2, newx = x[-train_id,])
+y.pred_test2 = c()
+y.pred_test2 = ifelse(lasso.pred_test > 0.5, 1, 0)
+
+#test accuracy = 0.6852792
+sum(y.pred_test2 == y[-train_id]) / (nrow(data) - length(train_id))
+
+#coefficience
+lasso.coef = predict(lasso.mod, type = "coefficients", s = bestlam2)
+lasso.coef
+```
+
+```{r}
+#group lasso (Wrong code! Don't run!)
+set.seed(6942)
+#grid = 10^seq(10, -2, length = 100)
+lambda = lambdamax(Observed.Attendance~., data = data[train_id,], model = LogReg(), center = TRUE,
+standardize = TRUE)
+
+grplasso.mod = grplasso(Observed.Attendance~., data = data[train_id,], lambda = lambda)
+
+#coefficience
+lasso.coef = grplasso.mod$coefficients
+lasso.coef
+
+#train predict
+lasso.pred_train = predict(grplasso.mod, s = lambda, newx = x[train_id,])
+y.pred_train2 = c()
+y.pred_train2 = ifelse(lasso.pred_train > 0.5, 1, 0)
+
+#train accuracy = 0.7636595
+sum(y.pred_train2 == y[train_id]) / length(train_id)
+```

@@ -1,0 +1,36 @@
+---
+title: "415-group-other methods"
+author: "Yuan Shi"
+date: "4/13/2018"
+output: pdf_document
+---
+
+###KNN
+```{r}
+library(MASS)
+interview <- read.csv ("/Users/apple/Desktop/interview_clean_v3.csv", header=TRUE)
+interview <- na.omit(interview)
+interview$Observed.Attendance = as.numeric(interview$Observed.Attendance) - 1
+set.seed(6942)
+interview = interview[,-1]
+train_id = sample(1:nrow(interview), trunc(0.8*nrow(interview)))
+interview_train = interview[train_id, ]
+interview_test = interview[-train_id, ]
+###KNN
+#install.packages("knncat")
+library("knncat")
+#interview_train <- factor(interview_train, levels=levels(interview))
+#interview_test <- factor(interview_test, levels=levels(interview))
+syncat <- knncat (interview_train, interview_test, classcol=17) #fails
+synpred <- predict (syncat, interview_train, interview_test, train.classcol=17,newdata.classcol=17)
+table (synpred, interview_test$Observed.Attendance)
+knncat (interview_train, interview_test, classcol=17)
+```
+###SVM
+```{r}
+x <- subset(interview_train, select = -Observed.Attendance) 
+y <- interview_train$Observed.Attendance
+model <- svm(x, y, probability = TRUE) #fail
+pred_prob <- predict(model, x, decision.values = TRUE, probability = TRUE)
+```
+###adaboost
